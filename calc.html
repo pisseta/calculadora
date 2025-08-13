@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calculadora Simples</title>
+  <style>
+    :root{
+      --bg:#0f1115;
+      --panel:#171a21;
+      --btn:#222634;
+      --btn-hover:#2b3144;
+      --accent:#6ee7b7;
+      --accent-2:#60a5fa;
+      --text:#e6e8ef;
+      --muted:#a6adbb;
+      --danger:#f87171;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius:14px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background: radial-gradient(1200px 800px at 10% 0%, #121624 0%, #0b0d13 60%, #07080c 100%), var(--bg);
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      display:grid;
+      place-items:center;
+      padding:24px;
+    }
+    .calc{
+      width:min(380px, 92vw);
+      background:linear-gradient(180deg,#1b2030 0%,#141925 100%);
+      border:1px solid #1f2330;
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .calc header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:14px 16px;
+      border-bottom:1px solid #1f2330;
+      background:rgba(255,255,255,.02);
+    }
+    .brand{
+      font-weight:600;
+      letter-spacing:.3px;
+    }
+    .screen{
+      padding:18px 16px 8px;
+      display:grid;
+      gap:8px;
+      background:var(--panel);
+      border-bottom:1px solid #1f2330;
+    }
+    .screen input{
+      width:100%;
+      border:none;
+      outline:none;
+      background:transparent;
+      color:var(--text);
+      text-align:right;
+      font-size:clamp(18px, 3.4vw + 14px, 28px);
+      padding:8px 4px;
+    }
+    .screen input[readonly]{cursor:default}
+    .expression{
+      color:var(--muted);
+      font-size:14px;
+      min-height:18px;
+      text-align:right;
+      user-select:none;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap:10px;
+      padding:14px;
+      background:linear-gradient(180deg,#141925 0%, #121622 100%);
+    }
+    button{
+      border:none;
+      border-radius:12px;
+      padding:16px 12px;
+      background:var(--btn);
+      color:var(--text);
+      font-size:18px;
+      cursor:pointer;
+      transition:transform .06s ease, background .15s ease, box-shadow .15s ease;
+      box-shadow: inset 0 -4px 0 rgba(0,0,0,.15);
+    }
+    button:hover{ background:var(--btn-hover) }
+    button:active{ transform: translateY(1px) }
+    .op{ color:var(--accent-2); font-weight:600 }
+    .accent{ background:linear-gradient(180deg, #1a2c28 0%, #11201c 100%); color:var(--accent); font-weight:700 }
+    .danger{ color:var(--danger) }
+    .wide{ grid-column: span 2 }
+    .equals{
+      background:linear-gradient(180deg,#1b2a40 0%, #132134 100%);
+      color:#dbeafe;
+      font-weight:700;
+    }
+    footer{
+      text-align:center;
+      font-size:12px;
+      color:#8b93a7;
+      padding:10px 0 14px;
+    }
+    .kbd{
+      font:600 11px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background:#0d1017;border:1px solid #1f2330;border-radius:6px;padding:2px 6px;margin-left:6px;color:#b6c2e1;
+    }
+  </style>
+</head>
+<body>
+  <div class="calc" role="application" aria-label="Calculadora">
+    <header>
+      <div class="brand">Calculadora</div>
+      <div aria-hidden="true" class="kbd">Teclado: 0–9, + − × ÷, Enter</div>
+    </header>
+    <div class="screen">
+      <div class="expression" id="ariaExpr" aria-live="polite"></div>
+      <input id="display" type="text" inputmode="decimal" aria-label="Visor" readonly value="0" />
+    </div>
+    <div class="grid" aria-label="Teclado da calculadora">
+      <button class="danger" data-action="clear">C</button>
+      <button data-action="back">⌫</button>
+      <button class="op" data-value="%">%</button>
+      <button class="op" data-value="/">÷</button>
+      <button data-value="7">7</button>
+      <button data-value="8">8</button>
+      <button data-value="9">9</button>
+      <button class="op" data-value="*">×</button>
+      <button data-value="4">4</button>
+      <button data-value="5">5</button>
+      <button data-value="6">6</button>
+      <button class="op" data-value="-">−</button>
+      <button data-value="1">1</button>
+      <button data-value="2">2</button>
+      <button data-value="3">3</button>
+      <button class="op" data-value="+">+</button>
+      <button class="wide" data-action="negate">±</button>
+      <button data-value="0">0</button>
+      <button data-value=".">,</button>
+      <button class="equals" data-action="equals">=</button>
+    </div>
+    <footer>Suporta teclado, porcentagem e prevenção de erros.</footer>
+  </div>
+  <script>
+    (function(){
+      const display = document.getElementById('display');
+      const exprEl  = document.getElementById('ariaExpr');
+      const grid    = document.querySelector('.grid');
+      let operand = '0', pending = null, justEvaluated = false;
+      function updateScreen(){
+        display.value = format(operand);
+        exprEl.textContent = buildExpressionPreview();
+      }
+      function format(numStr){
+        if (!isFinite(numStr)) return 'Erro';
+        if (numStr === '' || numStr === '-') return '0';
+        const n = Number(numStr);
+        const fixed = Math.abs(n) < 1e12 ? Number(n.toPrecision(12)) : n;
+        return String(fixed);
+      }
+      function appendDigit(d){
+        if (justEvaluated) { operand = '0'; justEvaluated = false; }
+        if (d === '.'){ if (!operand.includes('.')) operand += '.'; return updateScreen(); }
+        if (operand === '0') operand = d; else if (operand === '-0') operand = '-' + d; else operand += d;
+        updateScreen();
+      }
+      function setOp(op){
+        if (op === '%'){ operand = String(Number(operand)/100); return updateScreen(); }
+        if (pending && !justEvaluated) evaluate();
+        pending = { op, left: Number(operand) }; operand = '0'; justEvaluated = false; updateScreen();
+      }
+      function negate(){ operand = operand.startsWith('-') ? operand.slice(1) : '-' + operand; updateScreen(); }
+      function backspace(){ if (operand.length<=1 || (operand.length===2 && operand.startsWith('-'))) operand='0'; else operand=operand.slice(0,-1); updateScreen(); }
+      function clearAll(){ operand='0'; pending=null; justEvaluated=false; updateScreen(); }
+      function buildExpressionPreview(){
+        if (!pending) return '';
+        const op = ({'+':'+','-':'−','*':'×','/':'÷'})[pending.op] || pending.op;
+        return `${format(String(pending.left))} ${op} ${operand}`;
+      }
+      function operate(a,b,op){ return op==='+'?a+b:op==='-'?a-b:op==='*'?a*b:op==='/'?(b===0?Infinity:a/b):b; }
+      function evaluate(){
+        if (!pending) return;
+        const res = operate(pending.left, Number(operand), pending.op);
+        operand = isFinite(res) ? String(Number(res.toPrecision(12))) : 'Erro';
+        pending=null; justEvaluated=true; updateScreen();
+      }
+      grid.addEventListener('click', e=>{
+        const btn=e.target.closest('button'); if(!btn) return;
+        const val=btn.dataset.value, action=btn.dataset.action;
+        if(val){ if(val==='.' && operand.includes('.')) return; appendDigit(val); }
+        else if(action){ if(action==='clear') clearAll(); else if(action==='back') backspace(); else if(action==='negate') negate(); else if(action==='equals') evaluate(); }
+        if(btn.classList.contains('op') && val && ['+','-','*','/','%'].includes(val)) setOp(val);
+      });
+      document.addEventListener('keydown', e=>{
+        const k=e.key;
+        if((k>='0' && k<='9') || k==='.') return appendDigit(k);
+        if(k==='Backspace') return backspace();
+        if(k==='Delete') return clearAll();
+        if(k==='Enter' || k==='=') return evaluate();
+        if(['+','-','*','/','%'].includes(k)) return setOp(k);
+      });
+      updateScreen();
+    })();
+  </script>
+</body>
+</html>
